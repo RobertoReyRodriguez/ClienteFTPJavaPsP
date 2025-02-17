@@ -2,9 +2,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
- * Clase de ejemplo para demostrar el uso de ClientFtpProtocolService y ClientFtpDataService.
- * Realiza la conexión a un servidor FTP, la autenticación, consulta del directorio actual,
+ * Clase de ejemplo para demostrar el uso de ClientFtpProtocolService y
+ * ClientFtpDataService.
+ * Realiza la conexión a un servidor FTP, la autenticación, consulta del
+ * directorio actual,
  * listado de archivos y finaliza la sesión.
+ * 
  * @author RoberRey
  */
 public class FtpClientMain {
@@ -22,9 +25,9 @@ public class FtpClientMain {
 
             // Para descargar un archivo, descomentar y ajusta el nombre y ruta del archivo.
             /*
-            ftpClient.sendPassv();
-            ftpClient.sendRetr("archivo.txt", new FileOutputStream("archivo.txt"), true);
-            */
+             * ftpClient.sendPassv();
+             * ftpClient.sendRetr("archivo.txt", new FileOutputStream("archivo.txt"), true);
+             */
             ftpClient.sendQuit();
             ftpClient.close();
         } catch (IOException e) {
@@ -32,4 +35,3 @@ public class FtpClientMain {
         }
     }
 }
-

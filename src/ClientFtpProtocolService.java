@@ -1,4 +1,3 @@
-// ClientFtpProtocolService.java
 import java.io.*;
 import java.net.*;
 import java.util.concurrent.CountDownLatch;
@@ -8,9 +7,12 @@ import java.util.regex.Pattern;
 
 /**
  * Esta clase gestiona el canal de control del protocolo FTP.
- * Permite conectarse a un servidor FTP, enviar comandos (USER, PASS, QUIT, PWD, CWD, CDUP, PASV, LIST y RETR)
- * y recibir respuestas de forma asíncrona. Para comandos que involucran el canal de datos (LIST y RETR),
+ * Permite conectarse a un servidor FTP, enviar comandos (USER, PASS, QUIT, PWD,
+ * CWD, CDUP, PASV, LIST y RETR)
+ * y recibir respuestas de forma asíncrona. Para comandos que involucran el
+ * canal de datos (LIST y RETR),
  * se utiliza una sincronización para esperar la respuesta del comando PASV.
+ * 
  * @author RoberRey
  */
 public class ClientFtpProtocolService implements Runnable {
@@ -25,15 +27,16 @@ public class ClientFtpProtocolService implements Runnable {
     private CountDownLatch pasvLatch;
     // Socket para el canal de datos, asignado al recibir la respuesta 227.
     private Socket dataSocket;
-
     // Bloqueo para evitar el uso concurrente del canal de datos.
     private final Object dataChannelLock = new Object();
+    // Con esto permitimos que el hilo gestione varios booleanos uno detrás de otro
     private final AtomicBoolean dataChannelInUse = new AtomicBoolean(false);
 
     /**
      * Crea una instancia de ClientFtpProtocolService.
      *
-     * @param log OutputStream utilizado para registrar comandos y respuestas (por ejemplo, System.out).
+     * @param log OutputStream utilizado para registrar comandos y respuestas (por
+     *            ejemplo, System.out).
      */
     public ClientFtpProtocolService(OutputStream log) {
         this.log = log;
@@ -57,7 +60,8 @@ public class ClientFtpProtocolService implements Runnable {
 
     /**
      * Hilo de escucha que lee las respuestas del servidor FTP de forma asíncrona.
-     * Si se detecta la respuesta 227 del comando PASV, se parsea para obtener la IP y puerto del canal de datos,
+     * Si se detecta la respuesta 227 del comando PASV, se parsea para obtener la IP
+     * y puerto del canal de datos,
      * y se notifica al hilo que espera dicha respuesta.
      */
     @Override
@@ -66,7 +70,6 @@ public class ClientFtpProtocolService implements Runnable {
             String line;
             while ((line = controlReader.readLine()) != null) {
                 log.write((line + "\n").getBytes());
-                // Si se recibe el código 227, parseamos para obtener la dirección y puerto del canal de datos.
                 if (line.startsWith("227")) {
                     InetSocketAddress dataAddress = parse227(line);
                     try {
@@ -80,19 +83,19 @@ public class ClientFtpProtocolService implements Runnable {
                 }
             }
         } catch (IOException e) {
-            // Si el socket está cerrado intencionalmente, no se imprime error.
             if (controlSocket != null && !controlSocket.isClosed()) {
                 try {
                     log.write(("Error en el canal de control: " + e.getMessage() + "\n").getBytes());
                 } catch (IOException ex) {
-                    // Ignorar
+
                 }
             }
         }
     }
 
     /**
-     * Parsea la respuesta 227 para extraer la dirección IP y el puerto del canal de datos.
+     * Parsea la respuesta 227 para extraer la dirección IP y el puerto del canal de
+     * datos.
      * La respuesta debe tener el formato:
      * "227 Entering Passive Mode (h1,h2,h3,h4,p1,p2)."
      *
@@ -105,7 +108,7 @@ public class ClientFtpProtocolService implements Runnable {
         Matcher matcher = pattern.matcher(response);
         if (matcher.find()) {
             String ip = matcher.group(1) + "." + matcher.group(2) + "." +
-                        matcher.group(3) + "." + matcher.group(4);
+                    matcher.group(3) + "." + matcher.group(4);
             int port = Integer.parseInt(matcher.group(5)) * 256 + Integer.parseInt(matcher.group(6));
             return new InetSocketAddress(ip, port);
         } else {
@@ -218,7 +221,7 @@ public class ClientFtpProtocolService implements Runnable {
      * @throws IOException Si ocurre un error o si se interrumpe la espera.
      */
     public String sendPassv() throws IOException {
-        // Bloquea hasta que el canal de datos esté libre.
+        // Esto bloquea hasta que el canal de datos esté libre.
         synchronized (dataChannelLock) {
             while (dataChannelInUse.get()) {
                 try {
@@ -243,14 +246,18 @@ public class ClientFtpProtocolService implements Runnable {
 
     /**
      * Envía el comando RETR para descargar el archivo remoto indicado.
-     * Se asume que previamente se ha llamado a sendPassv() para configurar el canal de datos.
+     * Se asume que previamente se ha llamado a sendPassv() para configurar el canal
+     * de datos.
      * Se lanza un hilo independiente que realiza la transferencia de datos.
      *
      * @param remote      Nombre del archivo remoto a descargar.
-     * @param out         OutputStream donde se copiarán los datos (por ejemplo, FileOutputStream).
-     * @param closeOutput Indica si se debe cerrar el OutputStream al finalizar la transferencia.
+     * @param out         OutputStream donde se copiarán los datos (por ejemplo,
+     *                    FileOutputStream).
+     * @param closeOutput Indica si se debe cerrar el OutputStream al finalizar la
+     *                    transferencia.
      * @return Comando RETR enviado.
-     * @throws IOException Si el canal de datos no está iniciado o ocurre un error al enviar el comando.
+     * @throws IOException Si el canal de datos no está iniciado o ocurre un error
+     *                     al enviar el comando.
      */
     public String sendRetr(String remote, OutputStream out, boolean closeOutput) throws IOException {
         String command = "RETR " + remote;
@@ -261,20 +268,24 @@ public class ClientFtpProtocolService implements Runnable {
         ClientFtpDataService dataService = new ClientFtpDataService(
                 dataSocket, out, closeOutput, dataChannelLock, dataChannelInUse);
         new Thread(dataService).start();
-        // Reinicia el dataSocket para permitir futuras transferencias.
+        // Reinicia el dataSocket para permitir futuras operaciones.
         dataSocket = null;
         return command;
     }
 
     /**
      * Envía el comando LIST para listar los archivos/directorios en el servidor.
-     * Se asume que previamente se ha llamado a sendPassv() para configurar el canal de datos.
+     * Se asume que previamente se ha llamado a sendPassv() para configurar el canal
+     * de datos.
      * Se lanza un hilo independiente que realiza la transferencia de datos.
      *
-     * @param out         OutputStream donde se copiarán los datos (por ejemplo, System.out).
-     * @param closeOutput Indica si se debe cerrar el OutputStream al finalizar la transferencia.
+     * @param out         OutputStream donde se copiarán los datos (por ejemplo,
+     *                    System.out).
+     * @param closeOutput Indica si se debe cerrar el OutputStream al finalizar la
+     *                    transferencia.
      * @return Comando LIST enviado.
-     * @throws IOException Si el canal de datos no está iniciado o ocurre un error al enviar el comando.
+     * @throws IOException Si el canal de datos no está iniciado o ocurre un error
+     *                     al enviar el comando.
      */
     public String sendList(OutputStream out, boolean closeOutput) throws IOException {
         String command = "LIST";
