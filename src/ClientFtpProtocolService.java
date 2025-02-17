@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
  * Permite conectarse a un servidor FTP, enviar comandos (USER, PASS, QUIT, PWD, CWD, CDUP, PASV, LIST y RETR)
  * y recibir respuestas de forma asíncrona. Para comandos que involucran el canal de datos (LIST y RETR),
  * se utiliza una sincronización para esperar la respuesta del comando PASV.
+ * @author RoberRey
  */
 public class ClientFtpProtocolService implements Runnable {
 

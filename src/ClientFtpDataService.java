@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Realiza la copia de datos entre el InputStream del socket de datos y el OutputStream
  * indicado (por ejemplo, un FileOutputStream o System.out). Al finalizar, cierra el socket
  * y, si es necesario, el OutputStream, y libera el bloqueo que impide transferencias concurrentes.
+ @author RoberRey
  */
 public class ClientFtpDataService implements Runnable {
 
